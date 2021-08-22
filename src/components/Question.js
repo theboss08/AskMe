@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useHistory } from 'react-router-dom';
 import { alpha, makeStyles } from '@material-ui/core/styles';
 import AppBar from '@material-ui/core/AppBar';
 import Toolbar from '@material-ui/core/Toolbar';
@@ -16,7 +16,11 @@ import AccountCircle from '@material-ui/icons/AccountCircle';
 import MailIcon from '@material-ui/icons/Mail';
 import NotificationsIcon from '@material-ui/icons/Notifications';
 import MoreIcon from '@material-ui/icons/MoreVert';
-import {Container, Card, CardContent, Backdrop, CircularProgress} from '@material-ui/core';
+import ThumbUpIcon from '@material-ui/icons/ThumbUp';
+import ThumbUpOutlinedIcon from '@material-ui/icons/ThumbUpOutlined';
+import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
+import clsx from 'clsx';
+import {Container, Card, CardContent, Backdrop, CircularProgress, TextField, Button, Divider, Collapse, CardActions} from '@material-ui/core';
 
 const useStyles = makeStyles((theme) => ({
   grow: {
@@ -74,6 +78,9 @@ const useStyles = makeStyles((theme) => ({
       display: 'flex',
     },
   },
+  expandOpen: {
+    transform: 'rotate(180deg)',
+  },
   sectionMobile: {
     display: 'flex',
     [theme.breakpoints.up('md')]: {
@@ -91,19 +98,20 @@ export default function Question() {
   const [user, setUser] = useState({});
   const [question, setQuestion] = useState({});
   const [answers, setAnswers] = useState([]);
+  const [answer, setAnswer] = useState('');
+  const [expanded, setExpanded] = useState([]);
+  const [comment, setComment] = useState([]);
+  const [comments, setComments] = useState([]);
   const {question_id} = useParams();
+  const history = useHistory();
 
   useEffect(() => {
     async function checkLogin() {
-      try {
         let res = await axios.post('/user/check_login', {withCredentials: true});
         if(res.data.message === 'success') {
           setUser(res.data.body);
           setIsLoggedIn(true);
         }
-      } catch (err) {
-
-      }
     }
   	let fetchData = async () => {
       setBackdrop(true)
@@ -112,13 +120,22 @@ export default function Question() {
   			setQuestion(res.data.question);
   		}
   		let res2 = await axios.get(`/answer/${question_id}`);
+      let arr = new Array(res2.data.answers.length);
+      arr.fill(false, 0, arr.length);
       setBackdrop(false)
+      setExpanded(arr);
+      setComment(new Array(arr.length).fill('', 0, arr.length));
+      setComments(new Array(arr.length).fill([], 0, arr.length));
   		if(res2.data.message === 'success'){
   			setAnswers(res2.data.answers);
   		}
   	}
+    let views = async () => {
+      let res = await axios.put(`/question/views/${question_id}`);
+    }
     checkLogin();
   	fetchData();
+    views();
   }, [])
 
   const isMenuOpen = Boolean(anchorEl);
@@ -141,6 +158,48 @@ export default function Question() {
     setMobileMoreAnchorEl(event.currentTarget);
   };
 
+  const handleSubmit = async e => {
+    e.preventDefault();
+    let res = await axios.post('/answer', {withCredentials : true, body : answer, question_id});
+    if(res.data.message === 'success') {
+      alert('Answer added');
+      history.go(0);
+    }
+  }
+
+  const handleLogout = async e => {
+    let res = await axios.post('/user/logout', {withCredentials : true});
+    history.go(0);
+  }
+
+  const handleUpvote = async answer_id => {
+    let res = await axios.post(`/answer/upvote/${answer_id}`, {withCredentials : true});
+    if(res.data.message === 'success') {
+      alert('Upvoted');
+      history.go(0);
+    }
+  }
+
+  const handleDownVote = async answer_id => {
+    let res = await axios.post(`/answer/downvote/${answer_id}`, {withCredentials : true});
+    if(res.data.message === 'success') {
+      alert('Downvoted');
+      history.go(0);
+    }
+  }
+
+  const handleCommentChange = (e, key) => {
+    setComment(comment.map((c, i) => {if(key === i) return e.target.value; else return c}))
+  }
+
+  const handleCommentSubmit = async (key, answer_id) => {
+    let res = await axios.post('/answer_comment', {withCredentials : true, body : comment[key], answer_id});
+    if(res.data.message === 'success'){
+      alert('Comment Posted');
+      history.go(0);
+    }
+  }
+
   const menuId = 'primary-search-account-menu';
   const renderMenu = (
     <Menu
@@ -153,7 +212,7 @@ export default function Question() {
       onClose={handleMenuClose}
     >
       <MenuItem onClick={handleMenuClose}><Link to="/dashboard" style={{color : "black", textDecoration : "none"}} >Dashboard</Link></MenuItem>
-      <MenuItem onClick={handleMenuClose}> <Link to="/" style={{color : "black", textDecoration : "none"}} >Logout </Link> </MenuItem>
+      <MenuItem onClick={handleLogout}> Logout </MenuItem>
     </Menu>
   );
 
@@ -182,6 +241,33 @@ export default function Question() {
     </Menu>
   );
 
+  const likeButton = (answer, liked) => {
+    if(isLoggedIn) {
+      if(!liked) return <ThumbUpOutlinedIcon onClick={e => handleUpvote(answer._id)} fontSize={"large"} style={{marginTop : "20px", cursor : "pointer"}} />;
+      else return <ThumbUpIcon onClick={e => handleDownVote(answer._id)} fontSize={"large"} style={{marginTop : "20px", cursor : "pointer"}} />;
+    }
+  }
+
+  const handleExpand = (answer_id, key) => {
+    setExpanded(expanded.map((value, i) => {
+      if(i === key) {
+        if(comments[key].length === 0) {
+          axios.get(`/answer_comment/${answer_id}`).then((res) => {
+            if(res.data.message === 'success'){
+              setComments(comments.map((c, j) => {
+                if(j === key) {
+                  return res.data.comments;
+                }
+                else return c;
+              }))
+            }
+          })
+        }
+        return !value;
+    }
+    else return value;}));
+  }
+
   return (
     <>
           <Backdrop open={backdrop} style={{zIndex : 100000}} >
@@ -190,14 +276,6 @@ export default function Question() {
     <div className={classes.grow}>
       <AppBar position="static">
         <Toolbar>
-          <IconButton
-            edge="start"
-            className={classes.menuButton}
-            color="inherit"
-            aria-label="open drawer"
-          >
-            <MenuIcon />
-          </IconButton>
           <Typography className={classes.title} variant="h6" noWrap>
           <Link to="/" style={{textDecoration : "none", color : "white"}} >Askme</Link>
           </Typography>
@@ -239,6 +317,13 @@ export default function Question() {
 
 
 
+
+
+
+
+
+
+
     <Container style={{width : "60%", marginTop : "20px"}} >
 	<h2 style={{marginBottom : "70px"}} >
 		<Link to={`/question/${question._id}`} style={{color : "black", textDecoration : "none", fontWeight : "bold"}} >{question.body}</Link>
@@ -249,7 +334,40 @@ export default function Question() {
 
 
 
-    {answers.map((answer, key) => <Card key={key} style={{marginBottom : "10px"}} >
+
+    {/* Posting answer section */}
+
+    {isLoggedIn && (    <div>
+    <h2 style={{fontWeight : "bold"}} >
+    Post Answer
+    </h2>
+    <form onSubmit={handleSubmit} autoComplete="off" >
+    <div>
+    <TextField
+    onChange={e => setAnswer(e.target.value)}
+    value={answer}
+    fullWidth={true}
+    id="filled-multiline-static"
+    label="Your answer..."
+    multiline
+    rows={7}
+    variant="outlined"
+    required={true}
+    style={{marginTop : "20px"}}
+    />
+    </div>
+    <div>
+    <div style={{marginTop : "20px"}} ><Button type="submit" variant="contained" color="primary">Post</Button></div>
+    </div>
+    </form>
+    <Divider style={{marginTop : "20px"}} />
+    </div>)}
+
+
+
+
+
+    {answers.map((answer, key) => <Card key={key} style={{marginBottom : "40px"}} >
       <CardContent>
         <Typography>
         {answer.body}
@@ -257,6 +375,33 @@ export default function Question() {
         <Typography color="textSecondary" style={{marginTop : "20px"}} >
         By : <Link to={`/profile/${answer.user_id}`} style={{color : "black", textDecoration : "none", fontWeight : "bold"}}>{answer.answered_by}</Link> on {new Date(answer.updatedAt).toDateString()}
         </Typography>
+        {likeButton(answer, answer.liked)}
+        <Typography style={{marginTop : "10px", fontSize : "20px", fontWeight : 600}} >Votes : {answer.votes}</Typography>
+        <CardActions disableSpacing>
+        <IconButton
+          onClick={e => handleExpand(answer._id, key)}
+          aria-expanded={expanded}
+          aria-label="show more"
+          
+        >
+          Comments
+          <ExpandMoreIcon className={clsx({
+          [classes.expandOpen]: expanded[key],
+          })} />
+        </IconButton>
+      </CardActions>
+        <Collapse in={expanded[key]} timeout="auto" unmountOnExit>
+        <CardContent>
+          {isLoggedIn && (<form onSubmit={e => {e.preventDefault();handleCommentSubmit(key, answer._id)}} autoComplete="off">
+    <div style={{marginBottom : "20px"}} ><TextField value={comment[key]} onChange={e => handleCommentChange(e, key)} required fullWidth={true} id="outlined-basic" label="Comment" variant="outlined" /></div>
+    <div><Button type="submit" variant="contained" color="primary">Post</Button></div>
+  </form>)}
+
+  {comments[key].map((c, key) => <div key={key}><Typography style={{marginTop : "15px", marginBottom : "10px"}}> {c.body} </Typography><hr /></div>)}
+
+ 
+        </CardContent>
+      </Collapse>
       </CardContent>
     </Card>)}
     </Container>

@@ -188,14 +188,6 @@ export default function Question() {
     <div className={classes.grow}>
       <AppBar position="static">
         <Toolbar>
-          <IconButton
-            edge="start"
-            className={classes.menuButton}
-            color="inherit"
-            aria-label="open drawer"
-          >
-            <MenuIcon />
-          </IconButton>
           <Link to="/" style={{textDecoration : "none", color : "white"}} >
           <Typography className={classes.title} variant="h6" noWrap>
             Askme

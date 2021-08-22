@@ -160,6 +160,11 @@ export default function Question() {
     }
   }
 
+  const handleLogout = async e => {
+    let res = await axios.post('/user/logout', {withCredentials : true});
+    history.go(0);
+  }
+
   const menuId = 'primary-search-account-menu';
   const renderMenu = (
     <Menu
@@ -172,7 +177,7 @@ export default function Question() {
       onClose={handleMenuClose}
     >
       <MenuItem onClick={handleMenuClose}><Link to="/dashboard" style={{color : "black", textDecoration : "none"}} >Dashboard</Link></MenuItem>
-      <MenuItem onClick={handleMenuClose}> <Link to="/" style={{color : "black", textDecoration : "none"}} >Logout </Link> </MenuItem>
+      <MenuItem onClick={handleLogout}> Logout </MenuItem>
     </Menu>
   );
 
@@ -218,14 +223,7 @@ export default function Question() {
     <div className={classes.grow}>
       <AppBar position="static">
         <Toolbar>
-          <IconButton
-            edge="start"
-            className={classes.menuButton}
-            color="inherit"
-            aria-label="open drawer"
-          >
-            <MenuIcon />
-          </IconButton><Link to="/" style={{textDecoration : "none", color : "white"}} ><Typography className={classes.title} variant="h6" noWrap>
+        <Link to="/" style={{textDecoration : "none", color : "white"}} ><Typography className={classes.title} variant="h6" noWrap>
             Askme
           </Typography></Link>
 

@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from 'react';
-import {Link} from 'react-router-dom';
+import {Link, useHistory} from 'react-router-dom';
 import axios from 'axios';
 import { alpha, makeStyles } from '@material-ui/core/styles';
 import AppBar from '@material-ui/core/AppBar';
@@ -17,6 +17,7 @@ import MailIcon from '@material-ui/icons/Mail';
 import NotificationsIcon from '@material-ui/icons/Notifications';
 import MoreIcon from '@material-ui/icons/MoreVert';
 import {Container, Backdrop, CircularProgress, TextField, Button, Divider} from '@material-ui/core';
+import Autocomplete from '@material-ui/lab/Autocomplete';
 
 const useStyles = makeStyles((theme) => ({
   grow: {
@@ -93,6 +94,11 @@ export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState({});
   const [question, setQuestion] = useState('');
+  const [questions, setQuestions] = useState([]);
+  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [anchorEl2, setAnchorEl2] = React.useState(null);
+  const history = useHistory();
 
   useEffect(() => {
   	async function checkLogin() {
@@ -118,8 +124,16 @@ export default function Home() {
   			console.log(err);
   		}
   	}
+    async function fetchAllQuestions() {
+      let res = await axios.get('/question/all_questions');
+      if(res.data.message === 'success') {
+        setQuestions(res.data.questions);
+        console.log(res.data.questions);
+      }
+    }
   	checkLogin();
   	fetchQuestions();
+    fetchAllQuestions();
   }, [])
 
   const isMenuOpen = Boolean(anchorEl);
@@ -145,7 +159,18 @@ export default function Home() {
   const handleSubmit = async e => {
     e.preventDefault();
     let res = await axios.post('/question', {withCredentials : true, body : question})
+    alert('Question posted');
+    setQuestion('');
   };
+
+  const handleLogout = async e => {
+    let res = await axios.post('/user/logout', {withCredentials : true});
+    history.go(0);
+  }
+
+  const handleSearch = e => {
+    setSearch(e.target.value);
+  }
 
   const menuId = 'primary-search-account-menu';
   const renderMenu = (
@@ -159,7 +184,7 @@ export default function Home() {
       onClose={handleMenuClose}
     >
       <MenuItem onClick={handleMenuClose}><Link to="/dashboard" style={{color : "black", textDecoration : "none"}} >Dashboard</Link></MenuItem>
-      <MenuItem onClick={handleMenuClose}> <Link to="/" style={{color : "black", textDecoration : "none"}} >Logout</Link> </MenuItem>
+      <MenuItem onClick={handleLogout}> Logout </MenuItem>
     </Menu>
   );
 
@@ -196,29 +221,34 @@ export default function Home() {
     <div className={classes.grow}>
       <AppBar position="static">
         <Toolbar>
-          <IconButton
-            edge="start"
-            className={classes.menuButton}
-            color="inherit"
-            aria-label="open drawer"
-          >
-            <MenuIcon />
-          </IconButton>
           <Typography className={classes.title} variant="h6" noWrap>
             <Link to="/" style={{textDecoration : "none", color : "white"}} >Askme</Link>
           </Typography>
           <div className={classes.search}>
-            <div className={classes.searchIcon}>
-              <SearchIcon />
-            </div>
-            <InputBase
-              placeholder="Search…"
-              classes={{
-                root: classes.inputRoot,
-                input: classes.inputInput,
-              }}
-              inputProps={{ 'aria-label': 'search' }}
-            />
+
+
+
+      <Autocomplete
+        value={search}
+        onChange={(event, newValue) => {
+          if(newValue) {
+            history.push(`/question/${newValue._id}`);
+          }
+          else setSearch('');
+        }}
+        inputValue={searchInput}
+        onInputChange={(event, newInputValue) => {
+          setSearchInput(newInputValue);
+        }}
+        id="controllable-states-demo"
+        options={questions}
+        getOptionLabel={(option) => option.body}
+        style={{ width: 300 }}
+        renderInput={(params) => <TextField {...params} label="Search..." variant="outlined" />}
+      />
+
+
+
           </div>
           <div className={classes.grow} />
           <div className={classes.sectionDesktop}>
