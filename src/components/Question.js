@@ -16,7 +16,7 @@ import AccountCircle from '@material-ui/icons/AccountCircle';
 import MailIcon from '@material-ui/icons/Mail';
 import NotificationsIcon from '@material-ui/icons/Notifications';
 import MoreIcon from '@material-ui/icons/MoreVert';
-import {Container, Card, CardContent} from '@material-ui/core';
+import {Container, Card, CardContent, Backdrop, CircularProgress} from '@material-ui/core';
 
 const useStyles = makeStyles((theme) => ({
   grow: {
@@ -86,21 +86,38 @@ export default function Question() {
   const classes = useStyles();
   const [anchorEl, setAnchorEl] = React.useState(null);
   const [mobileMoreAnchorEl, setMobileMoreAnchorEl] = React.useState(null);
+  const [backdrop, setBackdrop] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState({});
   const [question, setQuestion] = useState({});
   const [answers, setAnswers] = useState([]);
   const {question_id} = useParams();
 
   useEffect(() => {
+    async function checkLogin() {
+      try {
+        let res = await axios.post('/user/check_login', {withCredentials: true});
+        if(res.data.message === 'success') {
+          setUser(res.data.body);
+          setIsLoggedIn(true);
+        }
+      } catch (err) {
+
+      }
+    }
   	let fetchData = async () => {
+      setBackdrop(true)
   		let res = await axios.get(`/question/${question_id}`);
   		if(res.data.message === 'success'){
   			setQuestion(res.data.question);
   		}
   		let res2 = await axios.get(`/answer/${question_id}`);
+      setBackdrop(false)
   		if(res2.data.message === 'success'){
   			setAnswers(res2.data.answers);
   		}
   	}
+    checkLogin();
   	fetchData();
   }, [])
 
@@ -151,22 +168,6 @@ export default function Question() {
       open={isMobileMenuOpen}
       onClose={handleMobileMenuClose}
     >
-      <MenuItem>
-        <IconButton aria-label="show 4 new mails" color="inherit">
-          <Badge badgeContent={4} color="secondary">
-            <MailIcon />
-          </Badge>
-        </IconButton>
-        <p>Messages</p>
-      </MenuItem>
-      <MenuItem>
-        <IconButton aria-label="show 11 new notifications" color="inherit">
-          <Badge badgeContent={11} color="secondary">
-            <NotificationsIcon />
-          </Badge>
-        </IconButton>
-        <p>Notifications</p>
-      </MenuItem>
       <MenuItem onClick={handleProfileMenuOpen}>
         <IconButton
           aria-label="account of current user"
@@ -183,6 +184,9 @@ export default function Question() {
 
   return (
     <>
+          <Backdrop open={backdrop} style={{zIndex : 100000}} >
+        <CircularProgress color="inherit" />
+      </Backdrop>
     <div className={classes.grow}>
       <AppBar position="static">
         <Toolbar>
@@ -195,11 +199,11 @@ export default function Question() {
             <MenuIcon />
           </IconButton>
           <Typography className={classes.title} variant="h6" noWrap>
-            Askme
+          <Link to="/" style={{textDecoration : "none", color : "white"}} >Askme</Link>
           </Typography>
           <div className={classes.grow} />
           <div className={classes.sectionDesktop}>
-            <IconButton
+          {isLoggedIn ? (            <IconButton
               edge="end"
               aria-label="account of current user"
               aria-controls={menuId}
@@ -208,7 +212,13 @@ export default function Question() {
               color="inherit"
             >
               <AccountCircle />
-            </IconButton>
+            </IconButton>) : <>
+            <MenuItem>
+            <div> <Link style={{textDecoration : "none", color : "white"}} to="/login">Login</Link> </div>
+            </MenuItem><MenuItem>
+            <div> <Link style={{textDecoration : "none", color : "white"}} to="/register">Register</Link> </div>
+            </MenuItem>
+            </>}
           </div>
           <div className={classes.sectionMobile}>
             <IconButton

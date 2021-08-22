@@ -1,6 +1,6 @@
-import React, {useState, useEffect} from 'react';
-import {Link} from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Link, useParams, useHistory } from 'react-router-dom';
 import { alpha, makeStyles } from '@material-ui/core/styles';
 import AppBar from '@material-ui/core/AppBar';
 import Toolbar from '@material-ui/core/Toolbar';
@@ -16,7 +16,7 @@ import AccountCircle from '@material-ui/icons/AccountCircle';
 import MailIcon from '@material-ui/icons/Mail';
 import NotificationsIcon from '@material-ui/icons/Notifications';
 import MoreIcon from '@material-ui/icons/MoreVert';
-import {Container, Backdrop, CircularProgress, TextField, Button, Divider} from '@material-ui/core';
+import {Container, Card, CardContent, Backdrop, CircularProgress, TextField, Button} from '@material-ui/core';
 
 const useStyles = makeStyles((theme) => ({
   grow: {
@@ -82,48 +82,41 @@ const useStyles = makeStyles((theme) => ({
   },
 }));
 
-export default function Home() {
+export default function Question() {
   const classes = useStyles();
-
-  const [questionList, setQuestionList] = useState([]);
-
   const [anchorEl, setAnchorEl] = React.useState(null);
   const [mobileMoreAnchorEl, setMobileMoreAnchorEl] = React.useState(null);
+  const history = useHistory();
   const [backdrop, setBackdrop] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState({});
-  const [question, setQuestion] = useState('');
+  const [userDetails, setUserDetails] = useState({name : '', email : '', password : '', about : '', qualification : ''});
 
   useEffect(() => {
-  	async function checkLogin() {
-  		try {
-  			let res = await axios.post('/user/check_login', {withCredentials: true});
-  			if(res.data.message === 'success') {
-  				setUser(res.data.body);
-  				setIsLoggedIn(true);
-  			}
-  		} catch (err) {
-
-  		}
-  	}
-  	async function fetchQuestions() {
-  		try {
-  			const res = await axios.get('/question');
+    async function checkLogin() {
+      try {
+        let res = await axios.post('/user/check_login', {withCredentials: true});
         setBackdrop(false);
-	  		if(res.data.message === 'success'){
-	  			setQuestionList(res.data.questions);
-	  		}
-  		}
-  		catch (err) {
-  			console.log(err);
-  		}
-  	}
-  	checkLogin();
-  	fetchQuestions();
+        if(res.data.message === 'success') {
+        	history.push('/');
+        }
+      } catch (err) {
+
+      }
+    }
+    checkLogin();
   }, [])
 
   const isMenuOpen = Boolean(anchorEl);
   const isMobileMenuOpen = Boolean(mobileMoreAnchorEl);
+
+  const handleSubmit = async (e) => {
+  	e.preventDefault();
+  	let res = await axios.post('/user/register', userDetails);
+  	if(res.data.message === 'success'){
+  		alert('Registered Successfully');
+  		history.push('/login');
+  	}
+  }
 
   const handleProfileMenuOpen = (event) => {
     setAnchorEl(event.currentTarget);
@@ -142,11 +135,6 @@ export default function Home() {
     setMobileMoreAnchorEl(event.currentTarget);
   };
 
-  const handleSubmit = async e => {
-    e.preventDefault();
-    let res = await axios.post('/question', {withCredentials : true, body : question})
-  };
-
   const menuId = 'primary-search-account-menu';
   const renderMenu = (
     <Menu
@@ -159,7 +147,7 @@ export default function Home() {
       onClose={handleMenuClose}
     >
       <MenuItem onClick={handleMenuClose}><Link to="/dashboard" style={{color : "black", textDecoration : "none"}} >Dashboard</Link></MenuItem>
-      <MenuItem onClick={handleMenuClose}> <Link to="/" style={{color : "black", textDecoration : "none"}} >Logout</Link> </MenuItem>
+      <MenuItem onClick={handleMenuClose}> <Link to="/" style={{color : "black", textDecoration : "none"}} >Logout </Link> </MenuItem>
     </Menu>
   );
 
@@ -190,9 +178,9 @@ export default function Home() {
 
   return (
     <>
-    <Backdrop open={backdrop} style={{zIndex : 10000}} >
-    <CircularProgress color="inherit" />
-    </Backdrop>
+          <Backdrop open={backdrop} style={{zIndex : 100000}} >
+        <CircularProgress color="inherit" />
+      </Backdrop>
     <div className={classes.grow}>
       <AppBar position="static">
         <Toolbar>
@@ -205,24 +193,11 @@ export default function Home() {
             <MenuIcon />
           </IconButton>
           <Typography className={classes.title} variant="h6" noWrap>
-            <Link to="/" style={{textDecoration : "none", color : "white"}} >Askme</Link>
+          <Link to="/" style={{textDecoration : "none", color : "white"}} >Askme</Link>
           </Typography>
-          <div className={classes.search}>
-            <div className={classes.searchIcon}>
-              <SearchIcon />
-            </div>
-            <InputBase
-              placeholder="Search…"
-              classes={{
-                root: classes.inputRoot,
-                input: classes.inputInput,
-              }}
-              inputProps={{ 'aria-label': 'search' }}
-            />
-          </div>
           <div className={classes.grow} />
           <div className={classes.sectionDesktop}>
-          {isLoggedIn ? <IconButton
+          {isLoggedIn ? (            <IconButton
               edge="end"
               aria-label="account of current user"
               aria-controls={menuId}
@@ -231,11 +206,13 @@ export default function Home() {
               color="inherit"
             >
               <AccountCircle />
-            </IconButton> : <><MenuItem>
+            </IconButton>) : <>
+            <MenuItem>
             <div> <Link style={{textDecoration : "none", color : "white"}} to="/login">Login</Link> </div>
             </MenuItem><MenuItem>
             <div> <Link style={{textDecoration : "none", color : "white"}} to="/register">Register</Link> </div>
-            </MenuItem></>}
+            </MenuItem>
+            </>}
           </div>
           <div className={classes.sectionMobile}>
             <IconButton
@@ -250,8 +227,8 @@ export default function Home() {
           </div>
         </Toolbar>
       </AppBar>
-      {renderMenu}
       {renderMobileMenu}
+      {renderMenu}
     </div>
 
 
@@ -260,52 +237,17 @@ export default function Home() {
 
 
 
-
-
-
-
-
-    {isLoggedIn && (    <Container style={{marginTop : "30px", width : "60%"}} >
-    <h2 style={{fontWeight : "bold"}} >
-    Ask Question
-    </h2>
-    <form onSubmit={handleSubmit} autoComplete="off" >
-    <div>
-    <TextField
-    onChange={e => setQuestion(e.target.value)}
-    value={question}
-    fullWidth={true}
-    id="filled-multiline-static"
-    label="Your question..."
-    multiline
-    rows={4}
-    variant="outlined"
-    required={true}
-    style={{marginTop : "20px"}}
-    />
-    </div>
-    <div>
-    <div style={{marginTop : "20px"}} ><Button type="submit" variant="contained" color="primary">Post</Button></div>
-    </div>
-    </form>
-    <Divider style={{marginTop : "20px"}} />
-    </Container>)}
-
-
-
-
-
-
-
-    <Container style={{marginTop : "20px", width : "60%"}}>
-    <h2 style={{fontWeight : 600, marginBottom : "20px"}} >Browse Questions</h2>
-    {questionList.map((question, key) => 
-    	<h2 key={key} style={{marginBottom : "30px"}} >
-    		<Link to={`/question/${question._id}`} style={{color : "black", textDecoration : "none", fontWeight : "bold"}} >{question.body}</Link>
-    		<div style={{fontSize : "16px", marginTop : "10px", display : "flex", justifyContent : "space-between"}} ><span>Asked : {new Date(question.updatedAt).toDateString()}</span><span>Asked By : <Link to={`/profile/${question.user_id}`} style={{textDecoration : "none", color : "black", fontWeight : "bold"}} >{question.asked_by}</Link> </span></div>
-    	</h2>
-    )}
+	<Container  style={{width : "20%", marginTop : "20px"}} >
+    <form onSubmit={handleSubmit} autoComplete="off">
+    	<div style={{marginBottom : "20px"}} ><TextField value={userDetails.name} onChange={e => setUserDetails({...userDetails, name : e.target.value})} required fullWidth={true} id="outlined-basic" label="Name" variant="outlined" /></div>
+		<div style={{marginBottom : "20px"}} ><TextField value={userDetails.email} onChange={e => setUserDetails({...userDetails, email : e.target.value})} required fullWidth={true} id="outlined-basic" label="Email" variant="outlined" /></div>
+		<div style={{marginBottom : "20px"}}><TextField value={userDetails.password} onChange={e => setUserDetails({...userDetails, password : e.target.value})} type="password" required fullWidth={true} id="outlined-basic" label="Password" variant="outlined" /></div>
+		<div style={{marginBottom : "20px"}} ><TextField value={userDetails.about} onChange={e => setUserDetails({...userDetails, about : e.target.value})} fullWidth={true} id="outlined-basic" label="About" variant="outlined" /></div>
+		<div style={{marginBottom : "20px"}} ><TextField value={userDetails.qualification} onChange={e => setUserDetails({...userDetails, qualification : e.target.value})} fullWidth={true} id="outlined-basic" label="Qualification" variant="outlined" /></div>
+		<div style={{display : "flex", justifyContent : "center"}} ><Button type="submit" variant="contained" color="primary">Register</Button></div>
+	</form>
     </Container>
+
     </>
   );
 }

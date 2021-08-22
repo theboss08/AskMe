@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useHistory } from 'react-router-dom';
 import { alpha, makeStyles } from '@material-ui/core/styles';
 import AppBar from '@material-ui/core/AppBar';
 import Toolbar from '@material-ui/core/Toolbar';
@@ -16,7 +16,7 @@ import AccountCircle from '@material-ui/icons/AccountCircle';
 import MailIcon from '@material-ui/icons/Mail';
 import NotificationsIcon from '@material-ui/icons/Notifications';
 import MoreIcon from '@material-ui/icons/MoreVert';
-import {Container, Card, CardContent} from '@material-ui/core';
+import {Container, Card, CardContent, CardActions, Button, Backdrop, CircularProgress } from '@material-ui/core';
 
 const useStyles = makeStyles((theme) => ({
   grow: {
@@ -86,16 +86,41 @@ export default function Question() {
   const classes = useStyles();
   const [anchorEl, setAnchorEl] = React.useState(null);
   const [mobileMoreAnchorEl, setMobileMoreAnchorEl] = React.useState(null);
+  const [backdrop, setBackdrop] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [follow, setFollow] = useState(false);
   const [user, setUser] = useState({});
   const {user_id} = useParams();
+  const history = useHistory();
 
   useEffect(() => {
+    async function checkLogin() {
+      try {
+        let res = await axios.post('/user/check_login', {withCredentials: true});
+        if(res.data.message === 'success') {
+          setIsLoggedIn(true);
+        }
+      } catch (err) {
+
+      }
+    }
+
+    let checkFollow = async () => {
+      let res = await axios.post('/connection/check', {withCredentials : true, follows : user_id});
+      if(res.data.message === 'success' && res.data.body === 'true'){
+        setFollow(true);
+      }
+    }
+
   	let fetchData = async () => {
   		let res = await axios.get(`/user/${user_id}`);
+      setBackdrop(false);
   		if(res.data.message === 'success') {
   			setUser(res.data.user);
   		}
   	}
+    checkLogin();
+    checkFollow();
   	fetchData();
   }, [])
 
@@ -118,6 +143,22 @@ export default function Question() {
   const handleMobileMenuOpen = (event) => {
     setMobileMoreAnchorEl(event.currentTarget);
   };
+
+  const handleFollow = async e => {
+    e.preventDefault();
+    let res = await axios.post('/connection/follow', {withCredentials : true, follows : user_id});
+    if(res.data.message === 'success'){
+      history.go(0);
+    }
+  }
+
+  const handleUnFollow = async e => {
+    e.preventDefault();
+    let res = await axios.post('/connection/unfollow', {withCredentials : true, follows : user_id});
+    if(res.data.message === 'success'){
+      history.go(0);
+    }
+  }
 
   const menuId = 'primary-search-account-menu';
   const renderMenu = (
@@ -146,22 +187,6 @@ export default function Question() {
       open={isMobileMenuOpen}
       onClose={handleMobileMenuClose}
     >
-      <MenuItem>
-        <IconButton aria-label="show 4 new mails" color="inherit">
-          <Badge badgeContent={4} color="secondary">
-            <MailIcon />
-          </Badge>
-        </IconButton>
-        <p>Messages</p>
-      </MenuItem>
-      <MenuItem>
-        <IconButton aria-label="show 11 new notifications" color="inherit">
-          <Badge badgeContent={11} color="secondary">
-            <NotificationsIcon />
-          </Badge>
-        </IconButton>
-        <p>Notifications</p>
-      </MenuItem>
       <MenuItem onClick={handleProfileMenuOpen}>
         <IconButton
           aria-label="account of current user"
@@ -176,8 +201,20 @@ export default function Question() {
     </Menu>
   );
 
+  const followButton = () => {
+    if(isLoggedIn){
+      if(follow) {
+        return <form onSubmit={handleUnFollow} ><Button type="submit" variant="contained" color="primary" >UnFollow</Button></form>;
+      }
+      else return <form onSubmit={handleFollow} ><Button type="submit" variant="contained" color="primary" >Follow</Button></form>;
+    }
+  }
+
   return (
     <>
+      <Backdrop open={backdrop} style={{zIndex : 100000}} >
+        <CircularProgress color="inherit" />
+      </Backdrop>
     <div className={classes.grow}>
       <AppBar position="static">
         <Toolbar>
@@ -188,13 +225,13 @@ export default function Question() {
             aria-label="open drawer"
           >
             <MenuIcon />
-          </IconButton>
-          <Typography className={classes.title} variant="h6" noWrap>
+          </IconButton><Link to="/" style={{textDecoration : "none", color : "white"}} ><Typography className={classes.title} variant="h6" noWrap>
             Askme
-          </Typography>
+          </Typography></Link>
+
           <div className={classes.grow} />
           <div className={classes.sectionDesktop}>
-            <IconButton
+            {isLoggedIn ? (<IconButton
               edge="end"
               aria-label="account of current user"
               aria-controls={menuId}
@@ -203,7 +240,13 @@ export default function Question() {
               color="inherit"
             >
               <AccountCircle />
-            </IconButton>
+            </IconButton>) : <>
+            <MenuItem>
+            <div> <Link style={{textDecoration : "none", color : "white"}} to="/login">Login</Link> </div>
+            </MenuItem><MenuItem>
+            <div> <Link style={{textDecoration : "none", color : "white"}} to="/register">Register</Link> </div>
+            </MenuItem>
+            </>}
           </div>
           <div className={classes.sectionMobile}>
             <IconButton
@@ -229,7 +272,32 @@ export default function Question() {
 
 
 
-    
+
+
+    <Container fixed style={{width : "60%", marginTop : "20px"}} >
+        <Card>
+	      <CardContent>
+	        <Typography variant="h5" component="h2" style={{marginBottom : "10px"}} >
+	        {user.name}
+	        </Typography>
+	        <Typography color="textSecondary"  >
+	        Email : {user.email}
+        	</Typography>
+        	<Typography color="textSecondary"  >
+	        About : {user.about}
+        	</Typography>
+        	<Typography color="textSecondary"  >
+	        Education : {user.qualification}
+        	</Typography>
+        	<Typography color="textSecondary" style={{fontWeight : "bold"}} >
+	        Followers : {user.followers}
+        	</Typography>
+        	<CardActions style={{marginTop : "10px"}} >
+          {followButton()}
+        	</CardActions>
+	      </CardContent>
+	    </Card>
+    </Container>
     </>
   );
 }
